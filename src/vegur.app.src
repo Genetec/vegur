@@ -6,7 +6,6 @@
   ,{applications,
     [kernel
      ,stdlib
-     ,ranch_proxy_protocol
      ,cowboyku
      ,midjan
      ,erequest_id

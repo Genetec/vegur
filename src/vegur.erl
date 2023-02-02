@@ -44,7 +44,6 @@
 %% API
 -export([start_http/3
         ,start_https/4
-        ,start_proxy/3
         ,stop_http/0
         ,stop_https/0
         ,stop_proxy/0
@@ -91,15 +90,6 @@ start_https(Port, Interface, Config, SSLOptions) ->
     HttpsRef = proplists:get_value(ref, Config, ?HTTPS_REF),
     start(https, HttpsRef, Port, Interface,
           Config, SSLOptions).
-
--spec start_proxy(PortNumber, Interface, Options) ->
-                         {ok, pid()}|no_return() when
-      PortNumber :: inet:port_number(),
-      Interface :: module(),
-      Options :: options().
-start_proxy(Port, Interface, Config) ->
-    ProxyRef = proplists:get_value(ref, Config, ?PROXY_REF),
-    start(proxy, ProxyRef, Port, Interface, Config, []).
 
 -spec stop_http() -> ok.
 stop_http() ->
@@ -220,27 +210,20 @@ prestart_config(Config) ->
       SocketOptions :: proplists:proplists().
 start_listener(http, Ref, Port, Acceptors,
                MaxConnections, Config, SocketOptions) ->
+    Opts = [{port, Port} | SocketOptions ] ++ extra_socket_options(),
+    RanchOpts = #{socket_opts => Opts,
+                  max_connections => MaxConnections},
     cowboyku:start_http(Ref, Acceptors,
-                        [{port, Port},
-                         {max_connections, MaxConnections}
-                         | SocketOptions ] ++ extra_socket_options(),
+                        RanchOpts,
                         merge_options(defaults(), Config));
 start_listener(https, Ref, Port, Acceptors,
                MaxConnections, Config, SocketOptions) ->
+    Opts = [{port, Port} | SocketOptions ] ++ extra_socket_options(),
+    RanchOpts = #{socket_opts => Opts,
+                  max_connections => MaxConnections},
     cowboyku:start_https(Ref, Acceptors,
-                        [{port, Port},
-                         {max_connections, MaxConnections}
-                         | SocketOptions ] ++ extra_socket_options(),
-                        merge_options(defaults(), Config));
-start_listener(proxy, Ref, Port, Acceptors,
-               MaxConnections, Config, SocketOptions) ->
-    ranch:start_listener(Ref, Acceptors,
-                         ranch_proxy,
-                         [{port, Port},
-                          {max_connections, MaxConnections}
-                         | SocketOptions ] ++ extra_socket_options(),
-                         cowboyku_protocol,
-                         merge_options(defaults(), Config)).
+                        RanchOpts,
+                        merge_options(defaults(), Config)).
 
 get_default(Key, Config, Default) ->
     {proplists:get_value(Key, Config, Default),
